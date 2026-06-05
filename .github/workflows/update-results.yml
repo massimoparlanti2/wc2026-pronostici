@@ -1,0 +1,31 @@
+name: ⚽ Aggiorna Risultati Mondiali
+
+on:
+  # Ogni ora durante i Mondiali
+  schedule:
+    - cron: '0 * * * *'
+
+  # Manuale: vai su GitHub → Actions → "Aggiorna Risultati" → "Run workflow"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installa dipendenze script
+        run: npm install
+        working-directory: scripts
+
+      - name: Scarica e aggiorna risultati
+        run: node update-results.mjs
+        working-directory: scripts
+        env:
+          FOOTBALL_API_KEY:         ${{ secrets.FOOTBALL_API_KEY }}
+          FIREBASE_DATABASE_URL:    ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
