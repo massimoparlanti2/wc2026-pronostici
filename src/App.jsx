@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { db } from './firebase.js';
-import { ref, onValue, set, remove } from 'firebase/database';
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { db } from './firebase.js'
+import { ref, onValue, set, remove } from 'firebase/database'
 
 // ─── DEADLINE ──────────────────────────────────────────────────────
 const DEADLINE = new Date("2026-06-11T18:00:00Z").getTime()
@@ -253,7 +253,7 @@ function MatchCard({ homeTeam,awayTeam,homeLabel,awayLabel,winner,onPick,label,r
           const sel=winner===team&&!!team, other=!!winner&&winner!==team&&!!team
           return (
             <button key={idx} onClick={()=>!locked&&team&&onPick&&onPick(sel?null:team)}
-              style={{ flex:1,display:'flex',alignItems:'center',gap:7,background:sel?'rgba(240,165,0,0.18)':'rgba(255,255,255,0.04)',border:`1.5px solid ${sel?'#F0A500':'rgba(255,255,255,0.07)'}`,borderRadius:10,padding:'7px 9px',cursor:locked||!team?'default':'pointer',opacity:other?.38:1,transition:'all .15s',transform:sel?'scale(1.01)':'scale(1)' }}>
+              style={{ flex:1,display:'flex',alignItems:'center',gap:7,background:sel?'rgba(240,165,0,0.18)':'rgba(255,255,255,0.04)',border:`1.5px solid ${sel?'#F0A500':'rgba(255,255,255,0.07)'}`,borderRadius:10,padding:'7px 9px',cursor:locked||!team?'default':'pointer',opacity:other ? 0.38 : 1,transition:'all .15s',transform:sel?'scale(1.01)':'scale(1)' }}>
               <span style={{ fontSize:20 }}>{team?getFlag(team):'❓'}</span>
               <div style={{ flex:1,minWidth:0 }}>
                 <p style={{ color:sel?'#F0A500':'rgba(255,255,255,0.85)',fontSize:12,fontWeight:sel?700:400,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{team||'TBD'}</p>
@@ -295,7 +295,7 @@ function GroupCard({ letter,group,pred,onChange,resGroup,locked }) {
         const r=rank(team.name), dis=!!(both&&!r)||locked
         return (
           <button key={team.name} onClick={()=>click(team.name)} disabled={dis}
-            style={{ display:'flex',alignItems:'center',gap:9,background:r?`${rc[r]}15`:'rgba(255,255,255,0.03)',border:`1.5px solid ${r?rc[r]:'rgba(255,255,255,0.07)'}`,borderRadius:10,padding:'9px 12px',cursor:dis?'not-allowed':'pointer',width:'100%',marginBottom:6,opacity:dis&&!r?.28:1,transition:'all .15s',transform:r?'scale(1.01)':'scale(1)' }}>
+            style={{ display:'flex',alignItems:'center',gap:9,background:r?`${rc[r]}15`:'rgba(255,255,255,0.03)',border:`1.5px solid ${r?rc[r]:'rgba(255,255,255,0.07)'}`,borderRadius:10,padding:'9px 12px',cursor:dis?'not-allowed':'pointer',width:'100%',marginBottom:6,opacity:(dis&&!r) ? 0.28 : 1,transition:'all .15s',transform:r?'scale(1.01)':'scale(1)' }}>
             <span style={{ fontSize:21 }}>{team.flag}</span>
             <span style={{ color:r?rc[r]:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:r?700:400,flex:1,textAlign:'left' }}>{team.name}</span>
             {resGroup?.first===team.name  && <span style={{ fontSize:9,color:'rgba(255,255,255,0.25)',marginRight:4 }}>1°</span>}
@@ -344,7 +344,7 @@ function ThirdPicker({ groups,thirds,onChange,locked }) {
                   <button key={team.name}
                     onClick={()=>!locked&&(sel?onChange(thirds.filter(t=>t!==team.name)):thirds.length<8&&onChange([...thirds,team.name]))}
                     disabled={(!sel&&thirds.length>=8)||locked}
-                    style={{ display:'flex',alignItems:'center',gap:6,background:sel?'rgba(240,165,0,0.15)':'rgba(255,255,255,0.04)',border:`1.5px solid ${sel?'#F0A500':'rgba(255,255,255,0.08)'}`,borderRadius:9,padding:'7px 11px',cursor:(!sel&&thirds.length>=8)||locked?'not-allowed':'pointer',opacity:(!sel&&thirds.length>=8)||(locked&&!sel)?.32:1,transition:'all .15s',transform:sel?'scale(1.02)':'scale(1)' }}>
+                    style={{ display:'flex',alignItems:'center',gap:6,background:sel?'rgba(240,165,0,0.15)':'rgba(255,255,255,0.04)',border:`1.5px solid ${sel?'#F0A500':'rgba(255,255,255,0.08)'}`,borderRadius:9,padding:'7px 11px',cursor:(!sel&&thirds.length>=8)||locked?'not-allowed':'pointer',opacity:(!sel&&thirds.length>=8)||(locked&&!sel) ? 0.32 : 1,transition:'all .15s',transform:sel?'scale(1.02)':'scale(1)' }}>
                     <span style={{ fontSize:18 }}>{team.flag}</span>
                     <span style={{ color:sel?'#F0A500':'rgba(255,255,255,0.75)',fontSize:12,fontWeight:sel?700:400 }}>{team.name}</span>
                     {sel&&<span style={{ color:'#F0A500',fontSize:11 }}>{locked?'🔒':'✓'}</span>}
