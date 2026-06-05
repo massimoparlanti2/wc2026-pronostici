@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { db } from './firebase.js'
-import { ref, onValue, set, remove } from 'firebase/database'
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { db } from './firebase.js';
+import { ref, onValue, set, remove } from 'firebase/database';
 
 // ─── DEADLINE ──────────────────────────────────────────────────────
 const DEADLINE = new Date("2026-06-11T18:00:00Z").getTime()
