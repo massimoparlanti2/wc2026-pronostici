@@ -1,16 +1,33 @@
 name: ⚽ Aggiorna Risultati Mondiali
 
 on:
-  # Ogni ora durante i Mondiali
+  # Ogni mattina alle 08:00 italiane durante il Mondiale 2026.
+  # GitHub Actions usa UTC: a giugno/luglio in Italia le 08:00 sono le 06:00 UTC.
+  # Include anche il 20 luglio per catturare il risultato della finale del 19 sera.
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 6 11-30 6 *'
+    - cron: '0 6 1-20 7 *'
 
   # Manuale: vai su GitHub → Actions → "Aggiorna Risultati" → "Run workflow"
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Esegui anche fuori dalla finestra del Mondiale'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-results
+  cancel-in-progress: true
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +46,4 @@ jobs:
           FOOTBALL_API_KEY:         ${{ secrets.FOOTBALL_API_KEY }}
           FIREBASE_DATABASE_URL:    ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FORCE_UPDATE:             ${{ inputs.force || 'false' }}

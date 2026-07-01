@@ -4,17 +4,28 @@
  * Scarica i risultati dei Mondiali 2026 da football-data.org
  * e li scrive su Firebase Realtime Database.
  *
- * Viene eseguito automaticamente da GitHub Actions ogni ora.
+ * Viene eseguito automaticamente da GitHub Actions ogni mattina alle 08:00 italiane.
  * Può essere eseguito manualmente: node scripts/update-results.mjs
  *
  * Variabili d'ambiente richieste:
  *   FOOTBALL_API_KEY          → chiave API di football-data.org
  *   FIREBASE_DATABASE_URL     → URL del Realtime Database Firebase
  *   FIREBASE_SERVICE_ACCOUNT  → JSON del service account Firebase (stringa)
+ *   FORCE_UPDATE=true         → forza l'esecuzione fuori dalla finestra del Mondiale
  */
 
-import { initializeApp, cert } from 'firebase-admin/app'
-import { getDatabase }         from 'firebase-admin/database'
+// ─── FINESTRA AUTOMATICA MONDIALE 2026 ────────────────────────────
+// La finale e' il 19 luglio sera in Italia: il controllo del 20 luglio
+// mattina cattura il risultato finale anche in caso di supplementari/rigori.
+const AUTO_UPDATE_START = new Date('2026-06-11T00:00:00.000Z')
+const AUTO_UPDATE_END   = new Date('2026-07-20T23:59:59.999Z')
+const now               = new Date(process.env.AUTO_UPDATE_NOW || Date.now())
+const forceUpdate       = process.env.FORCE_UPDATE === 'true'
+
+if (!forceUpdate && (now < AUTO_UPDATE_START || now > AUTO_UPDATE_END)) {
+  console.log(`⏭️  Fuori finestra Mondiale 2026 (${now.toISOString()}). Nessun aggiornamento eseguito.`)
+  process.exit(0)
+}
 
 // ─── INIT FIREBASE ADMIN ───────────────────────────────────────────
 const { FOOTBALL_API_KEY, FIREBASE_DATABASE_URL, FIREBASE_SERVICE_ACCOUNT } = process.env
@@ -23,6 +34,11 @@ if (!FOOTBALL_API_KEY || !FIREBASE_DATABASE_URL || !FIREBASE_SERVICE_ACCOUNT) {
   console.error('❌ Variabili d\'ambiente mancanti. Vedi README.md sezione "Risultati automatici".')
   process.exit(1)
 }
+
+const [{ initializeApp, cert }, { getDatabase }] = await Promise.all([
+  import('firebase-admin/app'),
+  import('firebase-admin/database'),
+])
 
 initializeApp({
   credential:  cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)),
@@ -159,7 +175,7 @@ function findKOMatch(allMatches, teamA, teamB, stage) {
 
 // ─── LOGICA PRINCIPALE ─────────────────────────────────────────────
 async function main() {
-  console.log(`\n⚽ Aggiornamento risultati Mondiali 2026 — ${new Date().toISOString()}\n`)
+  console.log(`\n⚽ Aggiornamento risultati Mondiali 2026 — ${now.toISOString()}\n`)
 
   // 1. Classifiche gironi
   console.log('📥 Fetch classifiche gironi...')
@@ -232,7 +248,8 @@ async function main() {
     ),
     thirds: allThirds,
     r32, r16, qf, sf, champion, thirdPlace,
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: now.toISOString(),
+    updateCadence: 'daily-08-europe-rome',
   }
 
   // 6. Log riepilogo
