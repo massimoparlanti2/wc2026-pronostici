@@ -96,7 +96,7 @@ function calcProgress(preds) {
   return Math.round(((g+t+r32+r16+qf+sf+ch)/51)*100)
 }
 
-const RESULTS_CHECK_SCHEDULE = 'Ogni mattina alle 08:00 fino al 20/07'
+const RESULTS_CHECK_SCHEDULE = 'Live ogni 15 minuti fino al 20/07'
 const formatLastUpdate = iso => {
   if (!iso) return null
   const date = new Date(iso)
@@ -115,7 +115,7 @@ function ResultsAutoStatus({ res }) {
   return (
     <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',background:'rgba(34,197,94,0.055)',border:'1px solid rgba(34,197,94,0.18)',borderRadius:12,padding:'9px 11px',marginBottom:14 }}>
       <span style={{ flexShrink:0,color:'#22C55E',background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.22)',borderRadius:999,padding:'3px 8px',fontSize:9,fontWeight:800,letterSpacing:1.2 }}>
-        AUTO 08:00
+        LIVE
       </span>
       <span style={{ color:'rgba(255,255,255,0.72)',fontSize:11,fontWeight:700 }}>
         {last ? `Ultimo controllo ${last}` : 'In attesa del primo controllo automatico'}

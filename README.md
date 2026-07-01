@@ -134,7 +134,7 @@ wc2026-pronostici/
 
 ## 🤖 Risultati automatici (opzionale ma consigliato)
 
-Con questa funzione i risultati si aggiornano **ogni mattina alle 08:00 italiane** senza che nessuno debba inserirli a mano, usando l'API gratuita di **football-data.org**.
+Con questa funzione i risultati si aggiornano **circa ogni 15 minuti** senza che nessuno debba inserirli a mano, usando l'API gratuita di **football-data.org**.
 
 Il workflow parte dall'inizio del Mondiale e si ferma dopo il controllo del **20 luglio 2026**, così cattura anche il risultato della finale del 19 luglio sera.
 
@@ -167,12 +167,12 @@ Aggiungi questi 3 secret:
 ### Come funziona
 
 ```
-Ogni mattina alle 08:00 italiane → GitHub Actions esegue scripts/update-results.mjs
-                                 → Chiama football-data.org/v4/competitions/WC
-                                 → Scarica classifiche gironi + risultati partite
-                                 → Mappa i dati nel formato dell'app
-                                 → Scrive su Firebase /wc2026/results
-                                 → Tutti gli utenti vedono i punteggi aggiornati in tempo reale
+Ogni 15 minuti → GitHub Actions esegue scripts/update-results.mjs
+               → Chiama football-data.org/v4/competitions/WC
+               → Scarica classifiche gironi + risultati partite
+               → Mappa i dati nel formato dell'app
+               → Scrive su Firebase /wc2026/results
+               → Tutti gli utenti vedono i punteggi aggiornati in tempo reale
 ```
 
 ### Esecuzione manuale

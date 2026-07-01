@@ -1,12 +1,11 @@
 name: ⚽ Aggiorna Risultati Mondiali
 
 on:
-  # Ogni mattina alle 08:00 italiane durante il Mondiale 2026.
-  # GitHub Actions usa UTC: a giugno/luglio in Italia le 08:00 sono le 06:00 UTC.
+  # Aggiornamento live ogni 15 minuti durante il Mondiale 2026.
   # Include anche il 20 luglio per catturare il risultato della finale del 19 sera.
   schedule:
-    - cron: '0 6 11-30 6 *'
-    - cron: '0 6 1-20 7 *'
+    - cron: '*/15 * 11-30 6 *'
+    - cron: '*/15 * 1-20 7 *'
 
   # Manuale: vai su GitHub → Actions → "Aggiorna Risultati" → "Run workflow"
   workflow_dispatch:

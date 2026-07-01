@@ -4,7 +4,7 @@
  * Scarica i risultati dei Mondiali 2026 da football-data.org
  * e li scrive su Firebase Realtime Database.
  *
- * Viene eseguito automaticamente da GitHub Actions ogni mattina alle 08:00 italiane.
+ * Viene eseguito automaticamente da GitHub Actions ogni 15 minuti durante il Mondiale.
  * Può essere eseguito manualmente: node scripts/update-results.mjs
  *
  * Variabili d'ambiente richieste:
@@ -173,6 +173,87 @@ function findKOMatch(allMatches, teamA, teamB, stage) {
   }) || null
 }
 
+function compareTableRows(a, b) {
+  return (b.points - a.points) ||
+    (b.gd - a.gd) ||
+    (b.gf - a.gf) ||
+    a.team.localeCompare(b.team, 'it')
+}
+
+function rowsHaveResults(rows) {
+  return rows.some(row =>
+    (row.played || 0) > 0 ||
+    (row.playedGames || 0) > 0 ||
+    (row.points || 0) > 0 ||
+    (row.goalsFor || 0) > 0 ||
+    (row.goalsAgainst || 0) > 0
+  )
+}
+
+function normaliseStandingRows(table) {
+  return table
+    .filter(row => row?.team?.name)
+    .map(row => ({
+      team: t(row.team.name),
+      points: row.points || 0,
+      gd: row.goalDifference || 0,
+      gf: row.goalsFor || 0,
+      played: row.playedGames || 0,
+    }))
+}
+
+function groupFromRows(rows) {
+  return {
+    first:  rows[0]?.team || '',
+    second: rows[1]?.team || '',
+    third:  rows[2]?.team || '',
+    fourth: rows[3]?.team || '',
+  }
+}
+
+function buildGroupTablesFromMatches(allMatches) {
+  const tables = {}
+
+  for (const match of allMatches) {
+    if (match.stage !== 'GROUP_STAGE') continue
+    const group = GROUP_MAP[match.group]
+    if (!group) continue
+
+    tables[group] ||= {}
+    const home = t(match.homeTeam.name)
+    const away = t(match.awayTeam.name)
+    tables[group][home] ||= { team: home, points: 0, gd: 0, gf: 0, played: 0 }
+    tables[group][away] ||= { team: away, points: 0, gd: 0, gf: 0, played: 0 }
+
+    if (match.status !== 'FINISHED') continue
+
+    const h = match.score.fullTime.home
+    const a = match.score.fullTime.away
+    if (typeof h !== 'number' || typeof a !== 'number') continue
+
+    const hr = tables[group][home]
+    const ar = tables[group][away]
+    hr.played += 1
+    ar.played += 1
+    hr.gf += h
+    ar.gf += a
+    hr.gd += h - a
+    ar.gd += a - h
+    if (h > a) hr.points += 3
+    else if (a > h) ar.points += 3
+    else {
+      hr.points += 1
+      ar.points += 1
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(tables)
+      .map(([group, rows]) => [group, Object.values(rows).sort(compareTableRows)])
+      .filter(([, rows]) => rowsHaveResults(rows))
+  )
+}
+
 // ─── LOGICA PRINCIPALE ─────────────────────────────────────────────
 async function main() {
   console.log(`\n⚽ Aggiornamento risultati Mondiali 2026 — ${now.toISOString()}\n`)
@@ -181,20 +262,18 @@ async function main() {
   console.log('📥 Fetch classifiche gironi...')
   const standingsData = await fetchJSON('https://api.football-data.org/v4/competitions/WC/standings?season=2026')
   const groups = {}
+  const thirdCandidatesByGroup = {}
 
   for (const standing of standingsData.standings || []) {
     const key = GROUP_MAP[standing.group]
     if (!key) continue
-    const table = standing.table || []
-    groups[key] = {
-      first:  t(table[0]?.team?.name || ''),
-      second: t(table[1]?.team?.name || ''),
-      third:  t(table[2]?.team?.name || ''),
-      fourth: t(table[3]?.team?.name || ''),
-    }
+    const rows = normaliseStandingRows(standing.table || [])
+    if (!rowsHaveResults(rows)) continue
+    groups[key] = groupFromRows(rows)
+    if (rows[2]) thirdCandidatesByGroup[key] = rows[2]
   }
-  const groupsDone = Object.keys(groups).length
-  console.log(`   ✓ Gironi con dati: ${groupsDone}/12`)
+  const apiGroupsDone = Object.keys(groups).length
+  console.log(`   ✓ Gironi con dati API: ${apiGroupsDone}/12`)
 
   // 2. Tutte le partite
   console.log('📥 Fetch risultati partite...')
@@ -206,13 +285,19 @@ async function main() {
   const total    = allMatches.length
   console.log(`   ✓ Partite finite: ${finished}/${total}`)
 
+  const computedTables = buildGroupTablesFromMatches(allMatches)
+  for (const [group, rows] of Object.entries(computedTables)) {
+    if (groups[group]) continue
+    groups[group] = groupFromRows(rows)
+    if (rows[2]) thirdCandidatesByGroup[group] = rows[2]
+  }
+  const groupsDone = Object.keys(groups).length
+  console.log(`   ✓ Gironi utilizzabili: ${groupsDone}/12`)
+
   // 3. Migliori terze classificate
-  // L'ordine di qualificazione delle terze dipende da una tabella FIFA.
-  // Usiamo l'ordine delle terze come appaiono nei risultati (in futuro
-  // si può raffinare con la logica ufficiale dei punti/gol differenza).
-  const allThirds = Object.values(groups)
-    .filter(g => g.third)
-    .map(g => g.third)
+  const allThirds = Object.values(thirdCandidatesByGroup)
+    .sort(compareTableRows)
+    .map(row => row.team)
     .slice(0, 8)
 
   // 4. Calcola risultati bracket
@@ -249,7 +334,21 @@ async function main() {
     thirds: allThirds,
     r32, r16, qf, sf, champion, thirdPlace,
     lastUpdated: now.toISOString(),
-    updateCadence: 'daily-08-europe-rome',
+    updateCadence: 'live-15-minutes',
+  }
+
+  const hasUsefulResults =
+    Object.values(results.groups).some(g => g.first || g.second) ||
+    results.thirds.length > 0 ||
+    results.r32.some(Boolean) ||
+    results.r16.some(Boolean) ||
+    results.qf.some(Boolean) ||
+    results.sf.some(Boolean) ||
+    Boolean(results.champion || results.thirdPlace)
+
+  if (!hasUsefulResults) {
+    console.log('\nℹ️ Nessun risultato utile trovato: Firebase non viene sovrascritto con dati vuoti.\n')
+    return
   }
 
   // 6. Log riepilogo
@@ -268,7 +367,9 @@ async function main() {
   console.log('✅ Firebase aggiornato con successo!\n')
 }
 
-main().catch(err => {
+main().then(() => {
+  process.exit(0)
+}).catch(err => {
   console.error('\n❌ Errore:', err.message)
   process.exit(1)
 })
