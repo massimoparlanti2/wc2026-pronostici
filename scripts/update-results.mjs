@@ -86,6 +86,7 @@ const TEAM_MAP = {
   'New Zealand':                  'Nuova Zelanda',
   'Spain':                        'Spagna',
   'Cape Verde':                   'Capo Verde',
+  'Cape Verde Islands':           'Capo Verde',
   'Saudi Arabia':                 'Arabia Saudita',
   'Uruguay':                      'Uruguay',
   'France':                       'Francia',
