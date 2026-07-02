@@ -135,6 +135,28 @@ function emptyPreds() {
     champion: null, thirdPlace: null,
   }
 }
+
+function normalisePickArray(value, length) {
+  return Array.from({ length }, (_, i) => value?.[i] || null)
+}
+
+function normalisePreds(preds) {
+  const empty = emptyPreds()
+  if (!preds) return empty
+  return sanitize({
+    ...empty,
+    ...preds,
+    groups: { ...empty.groups, ...(preds.groups || {}) },
+    thirds: Array.isArray(preds.thirds) ? preds.thirds.filter(Boolean) : [],
+    r32: normalisePickArray(preds.r32, 16),
+    r16: normalisePickArray(preds.r16, 8),
+    qf: normalisePickArray(preds.qf, 4),
+    sf: normalisePickArray(preds.sf, 2),
+    champion: preds.champion || null,
+    thirdPlace: preds.thirdPlace || null,
+  })
+}
+
 function sanitize(p) {
   const q = JSON.parse(JSON.stringify(p))
   for (let m=0;m<16;m++) {
@@ -328,9 +350,9 @@ function GroupCard({ letter,group,pred,onChange,resGroup,locked }) {
             style={{ display:'flex',alignItems:'center',gap:9,background:r?`${rc[r]}15`:'rgba(255,255,255,0.03)',border:`1.5px solid ${r?rc[r]:'rgba(255,255,255,0.07)'}`,borderRadius:10,padding:'9px 12px',cursor:dis?'not-allowed':'pointer',width:'100%',marginBottom:6,opacity:(dis&&!r) ? 0.28 : 1,transition:'all .15s',transform:r?'scale(1.01)':'scale(1)' }}>
             <span style={{ fontSize:21 }}>{team.flag}</span>
             <span style={{ color:r?rc[r]:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:r?700:400,flex:1,textAlign:'left' }}>{team.name}</span>
-            {resGroup?.first===team.name  && <span style={{ fontSize:9,color:'rgba(255,255,255,0.25)',marginRight:4 }}>1°</span>}
-            {resGroup?.second===team.name && <span style={{ fontSize:9,color:'rgba(255,255,255,0.25)',marginRight:4 }}>2°</span>}
-            {r && <span style={{ background:rc[r],color:'#111',borderRadius:5,padding:'2px 8px',fontFamily:FONT.d,fontSize:12,letterSpacing:1 }}>{r===1?'1°':'2°'}</span>}
+            {resGroup?.first===team.name  && <span style={{ fontSize:9,color:'rgba(255,255,255,0.32)',marginRight:4,whiteSpace:'nowrap' }}>Ris. 1°</span>}
+            {resGroup?.second===team.name && <span style={{ fontSize:9,color:'rgba(255,255,255,0.32)',marginRight:4,whiteSpace:'nowrap' }}>Ris. 2°</span>}
+            {r && <span style={{ background:rc[r],color:'#111',borderRadius:5,padding:'2px 7px',fontFamily:FONT.d,fontSize:11,letterSpacing:1,whiteSpace:'nowrap' }}>{r===1?'Pron. 1°':'Pron. 2°'}</span>}
           </button>
         )
       })}
@@ -412,10 +434,18 @@ function BracketRounds({ preds,onChange,res,locked }) {
   const upd=(key,i,t)=>{if(locked)return;const a=[...(preds[key]||[])];a[i]=t;onChange(sanitize({...preds,[key]:a}))}
   const s1l=[qf[0],qf[1]].find(t=>t&&t!==sf[0])||null
   const s2l=[qf[2],qf[3]].find(t=>t&&t!==sf[1])||null
+  const last = formatLastUpdate(res?.lastUpdated)
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+      <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',background:'rgba(255,255,255,0.035)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'9px 11px' }}>
+        <span style={{ color:'#F0A500',background:'rgba(240,165,0,0.12)',border:'1px solid rgba(240,165,0,0.22)',borderRadius:999,padding:'3px 8px',fontSize:9,fontWeight:800,letterSpacing:1.2 }}>
+          PRONOSTICO
+        </span>
+        <span style={{ color:'rgba(255,255,255,0.68)',fontSize:11,fontWeight:700 }}>Percorso salvato</span>
+        <span style={{ color:'rgba(255,255,255,0.32)',fontSize:11 }}>{last ? `Reali aggiornati ${last}` : 'Reali in attesa'}</span>
+      </div>
       <RoundSection title="Sedicesimi di Finale" badge={`${r32.filter(Boolean).length}/16`} color="#45B7D1" done={r32.filter(Boolean).length===16}>
-        <div style={{ background:'rgba(69,183,209,0.08)',borderRadius:8,padding:'6px 10px',marginBottom:2 }}><p style={{ color:'rgba(69,183,209,0.7)',fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase' }}>📌 Tabellone ufficiale FIFA 2026</p></div>
+        <div style={{ background:'rgba(69,183,209,0.08)',borderRadius:8,padding:'6px 10px',marginBottom:2 }}><p style={{ color:'rgba(69,183,209,0.7)',fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase' }}>📌 Percorso pronosticato · tabellone FIFA 2026</p></div>
         <p style={{ color:'rgba(255,255,255,0.22)',fontSize:9,fontWeight:700,letterSpacing:1.5,marginBottom:2,textTransform:'uppercase' }}>Percorso 1 — M73–M80</p>
         {[0,1,2,3,4,5,6,7].map(m=>{const[hs,as]=R32_T[m];return(<MatchCard key={m} homeTeam={slotTeam(hs,groups,thirds)} awayTeam={slotTeam(as,groups,thirds)} homeLabel={slotLabel(hs)} awayLabel={slotLabel(as)} winner={r32[m]} onPick={t=>upd('r32',m,t)} resWinner={res?.r32?.[m]} label={R32_LABELS[m]} locked={locked}/>)})}
         <p style={{ color:'rgba(255,255,255,0.22)',fontSize:9,fontWeight:700,letterSpacing:1.5,margin:'8px 0 2px',textTransform:'uppercase' }}>Percorso 2 — M81–M88</p>
@@ -583,10 +613,14 @@ function LiveLeaderboard({ participants, res, onSelect }) {
 
 // ─── PREDICT VIEW ──────────────────────────────────────────────────
 function PredictView({ participant,onSave,onBack,res,locked }) {
-  const [preds,setPreds] = useState(() => ({ ...emptyPreds(), ...(participant.predictions||{}) }))
+  const [preds,setPreds] = useState(() => normalisePreds(participant.predictions))
   const [tab,setTab] = useState('gironi')
   const [saved,setSaved] = useState(false)
   const [confetti,setConfetti] = useState(false)
+  useEffect(() => {
+    setPreds(normalisePreds(participant.predictions))
+    setSaved(false)
+  }, [participant.id])
   const gDone = Object.values(preds.groups).filter(g=>g.first&&g.second).length
   const tDone = preds.thirds.length
   const r32D  = preds.r32.filter(Boolean).length
@@ -819,9 +853,13 @@ export default function App() {
   const participants = useMemo(() => {
     return Object.entries(participantsMap || {}).map(([id, p]) => ({
       ...p, id,
-      predictions: predictionsMap?.[id] || emptyPreds(),
+      predictions: normalisePreds(predictionsMap?.[id]),
     }))
   }, [participantsMap, predictionsMap])
+  const activeParticipant = useMemo(() => {
+    if (!active) return null
+    return participants.find(p => p.id === active.id) || active
+  }, [active, participants])
 
   const addParticipant = name => {
     if (locked) return
@@ -844,7 +882,7 @@ export default function App() {
   const savePreds = preds => {
     if (locked) return
     setPredictionsMap({ ...(predictionsMap||{}), [active.id]: preds })
-    setActive(prev => ({ ...prev, predictions: preds }))
+    setActive(prev => ({ ...prev, predictions: normalisePreds(preds) }))
   }
 
   if (pLoading || predLoading || resLoading) return (
@@ -860,7 +898,7 @@ export default function App() {
     <div style={{ background:'#06070F',backgroundImage:'radial-gradient(ellipse at 10% 0%,rgba(240,165,0,0.09) 0%,transparent 55%),radial-gradient(ellipse at 90% 100%,rgba(255,107,53,0.07) 0%,transparent 55%)',minHeight:'100vh' }}>
       <Styles/>
       {view==='home'        && <HomeView        participants={participants} onAdd={addParticipant} onSelect={selectParticipant} onDelete={deleteParticipant} onLeaderboard={()=>setView('leaderboard')} onAdmin={()=>setView('admin')} res={res} locked={locked}/>}
-      {view==='predict'     && active && <PredictView participant={active} onSave={savePreds} onBack={()=>setView('home')} res={res} locked={locked}/>}
+      {view==='predict'     && activeParticipant && <PredictView participant={activeParticipant} onSave={savePreds} onBack={()=>setView('home')} res={res} locked={locked}/>}
       {view==='leaderboard' && <LeaderboardView participants={participants} res={res} onBack={()=>setView('home')} onSelect={p=>{selectParticipant(p)}}/>}
       {view==='admin'       && <AdminView       res={res} onSave={r=>{setRes(r);setView('home')}} onBack={()=>setView('home')}/>}
     </div>
