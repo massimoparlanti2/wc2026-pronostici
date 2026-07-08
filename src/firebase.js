@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
@@ -14,7 +13,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 // Make absolutely sure this line is exactly here at the bottom:
+export const firebaseDatabaseURL = firebaseConfig.databaseURL;
 export const db = getDatabase(app);

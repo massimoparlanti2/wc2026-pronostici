@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { db } from './firebase.js';
+import { db, firebaseDatabaseURL } from './firebase.js';
 import { ref, onValue, set, remove } from 'firebase/database';
 // ─── DEADLINE ──────────────────────────────────────────────────────
 const DEADLINE = new Date("2026-06-11T18:00:00Z").getTime()
@@ -174,21 +174,123 @@ function sanitize(p) {
 }
 
 // ─── FIREBASE HOOKS ────────────────────────────────────────────────
+const firebaseRestUrl = path =>
+  `${firebaseDatabaseURL.replace(/\/$/, '')}/${path}.json`
+
+const errorText = err =>
+  err?.code || err?.message || String(err || 'Errore sconosciuto')
+
+async function restRead(path) {
+  const res = await fetch(`${firebaseRestUrl(path)}?ts=${Date.now()}`, {
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+async function restWrite(path, value) {
+  const res = await fetch(firebaseRestUrl(path), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+async function restDelete(path) {
+  const res = await fetch(firebaseRestUrl(path), { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 function useFirebase(path, fallback) {
   const [data, setData] = useState(fallback)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [reloadTick, setReloadTick] = useState(0)
+
   useEffect(() => {
-    const r = ref(db, path)
-    const unsub = onValue(r, snap => {
-      const v = snap.val()
+    let active = true
+    let unsub = () => {}
+
+    const applyValue = v => {
+      if (!active) return
       setData(v !== null && v !== undefined ? v : fallback)
+      setError(null)
       setLoading(false)
-    })
-    return () => unsub()
-  }, [path])
-  const write = val => set(ref(db, path), val)
-  const del   = ()  => remove(ref(db, path))
-  return [data, write, loading, del]
+    }
+
+    const loadViaRest = async reason => {
+      try {
+        const v = await restRead(path)
+        applyValue(v)
+      } catch (err) {
+        if (!active) return
+        setError(`${reason}: ${errorText(err)}`)
+        setLoading(false)
+      }
+    }
+
+    setLoading(true)
+    setError(null)
+
+    const timer = setTimeout(() => {
+      loadViaRest('Timeout connessione Firebase')
+    }, 4500)
+
+    try {
+      const r = ref(db, path)
+      unsub = onValue(r, snap => {
+        clearTimeout(timer)
+        applyValue(snap.val())
+      }, err => {
+        clearTimeout(timer)
+        loadViaRest(`Listener Firebase: ${errorText(err)}`)
+      })
+    } catch (err) {
+      clearTimeout(timer)
+      loadViaRest(`Avvio Firebase: ${errorText(err)}`)
+    }
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+      unsub()
+    }
+  }, [path, reloadTick])
+
+  const write = async val => {
+    try {
+      await set(ref(db, path), val)
+      setError(null)
+    } catch (err) {
+      try {
+        await restWrite(path, val)
+        setError(null)
+      } catch (restErr) {
+        setError(`Scrittura Firebase: ${errorText(restErr)}`)
+        throw restErr
+      }
+    }
+  }
+
+  const del = async () => {
+    try {
+      await remove(ref(db, path))
+      setError(null)
+    } catch (err) {
+      try {
+        await restDelete(path)
+        setError(null)
+      } catch (restErr) {
+        setError(`Eliminazione Firebase: ${errorText(restErr)}`)
+        throw restErr
+      }
+    }
+  }
+
+  const reload = () => setReloadTick(t => t + 1)
+  return [data, write, loading, del, error, reload]
 }
 
 // ─── COUNTDOWN ─────────────────────────────────────────────────────
@@ -842,9 +944,9 @@ function LeaderboardView({ participants,res,onBack,onSelect }) {
 
 // ─── APP ───────────────────────────────────────────────────────────
 export default function App() {
-  const [participantsMap, setParticipantsMap, pLoading] = useFirebase('wc2026/participants', {})
-  const [predictionsMap,  setPredictionsMap,  predLoading] = useFirebase('wc2026/predictions', {})
-  const [res, setRes, resLoading] = useFirebase('wc2026/results', null)
+  const [participantsMap, setParticipantsMap, pLoading, , pError, retryParticipants] = useFirebase('wc2026/participants', {})
+  const [predictionsMap,  setPredictionsMap,  predLoading, , predError, retryPredictions] = useFirebase('wc2026/predictions', {})
+  const [res, setRes, resLoading, , resError, retryResults] = useFirebase('wc2026/results', null)
   const [view,   setView]   = useState('home')
   const [active, setActive] = useState(null)
   const { locked } = useCountdown()
@@ -885,11 +987,30 @@ export default function App() {
     setActive(prev => ({ ...prev, predictions: normalisePreds(preds) }))
   }
 
+  const connectionError = pError || predError || resError
+  const retryFirebase = () => { retryParticipants(); retryPredictions(); retryResults() }
+
   if (pLoading || predLoading || resLoading) return (
     <div style={{ background:'#06070F',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center' }}>
       <div style={{ textAlign:'center' }}>
         <div style={{ fontSize:40,marginBottom:12 }}>⚽</div>
         <p style={{ fontFamily:FONT.b,color:'rgba(255,255,255,0.3)',fontSize:14 }}>Connessione a Firebase...</p>
+      </div>
+    </div>
+  )
+
+  if (connectionError) return (
+    <div style={{ background:'#06070F',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:18 }}>
+      <div style={{ maxWidth:420,textAlign:'center',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,107,107,0.28)',borderRadius:16,padding:22 }}>
+        <div style={{ fontSize:38,marginBottom:10 }}>⚠️</div>
+        <h2 style={{ fontFamily:FONT.d,color:'#ff6b6b',fontSize:26,letterSpacing:1,marginBottom:8 }}>Firebase non raggiungibile</h2>
+        <p style={{ color:'rgba(255,255,255,0.58)',fontSize:13,lineHeight:1.5,marginBottom:14 }}>
+          La pagina non riesce a leggere il database. Prova a cambiare rete o disattivare filtri DNS/ad blocker per questo sito.
+        </p>
+        <p style={{ color:'rgba(255,255,255,0.28)',fontSize:11,lineHeight:1.45,marginBottom:16,wordBreak:'break-word' }}>{connectionError}</p>
+        <button onClick={retryFirebase} style={{ background:'linear-gradient(135deg,#F0A500,#FF6B35)',border:'none',borderRadius:10,padding:'11px 18px',color:'#1a1a2e',fontWeight:900,fontSize:13,cursor:'pointer' }}>
+          Riprova connessione
+        </button>
       </div>
     </div>
   )
