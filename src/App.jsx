@@ -44,6 +44,23 @@ const slotLabel = slot => slot.g ? `${slot.p==='first'?'1°':'2°'} ${slot.g}` :
 const PTS = { g1:3, g2:2, t3:2, r32:5, r16:8, qf:11, sf:14, champion:20, tp:6 }
 const MAX_PTS = { g1:36, g2:24, t3:16, r32:80, r16:64, qf:44, sf:28, champion:20, tp:6 }
 
+function countStageHits(predicted = [], actual = [], points) {
+  const remaining = new Map()
+  for (const team of actual || []) {
+    if (!team) continue
+    remaining.set(team, (remaining.get(team) || 0) + 1)
+  }
+  let total = 0
+  for (const team of predicted || []) {
+    if (!team) continue
+    const left = remaining.get(team) || 0
+    if (!left) continue
+    total += points
+    left === 1 ? remaining.delete(team) : remaining.set(team, left - 1)
+  }
+  return total
+}
+
 function calcBreakdown(preds, res) {
   const b = { g1:0, g2:0, t3:0, r32:0, r16:0, qf:0, sf:0, champion:0, tp:0 }
   if (!res || !preds) return b
@@ -52,10 +69,10 @@ function calcBreakdown(preds, res) {
     if (res.groups?.[g]?.second && preds.groups?.[g]?.second === res.groups[g].second) b.g2  += PTS.g2
   }
   for (const t of (res.thirds||[])) if (preds.thirds?.includes(t)) b.t3 += PTS.t3
-  for (let i=0;i<16;i++) if (res.r32?.[i]  && preds.r32?.[i]  === res.r32[i])  b.r32 += PTS.r32
-  for (let i=0;i<8;i++)  if (res.r16?.[i]  && preds.r16?.[i]  === res.r16[i])  b.r16 += PTS.r16
-  for (let i=0;i<4;i++)  if (res.qf?.[i]   && preds.qf?.[i]   === res.qf[i])   b.qf  += PTS.qf
-  for (let i=0;i<2;i++)  if (res.sf?.[i]   && preds.sf?.[i]   === res.sf[i])   b.sf  += PTS.sf
+  b.r32 = countStageHits(preds.r32, res.r32, PTS.r32)
+  b.r16 = countStageHits(preds.r16, res.r16, PTS.r16)
+  b.qf = countStageHits(preds.qf, res.qf, PTS.qf)
+  b.sf = countStageHits(preds.sf, res.sf, PTS.sf)
   if (res.champion   && preds.champion   === res.champion)   b.champion += PTS.champion
   if (res.thirdPlace && preds.thirdPlace === res.thirdPlace) b.tp       += PTS.tp
   return b
@@ -66,6 +83,17 @@ function calcScore(preds, res) {
 }
 
 // Punti ancora raggiungibili (partite non ancora decise nel res)
+function uniqueCount(items = []) {
+  return new Set((items || []).filter(Boolean)).size
+}
+
+function stagePotential(predicted = [], actual = [], totalSlots, points) {
+  const remainingSlots = Math.max(0, totalSlots - uniqueCount(actual))
+  const actualTeams = new Set((actual || []).filter(Boolean))
+  const stillOpenPredictions = new Set((predicted || []).filter(team => team && !actualTeams.has(team)))
+  return Math.min(remainingSlots, stillOpenPredictions.size) * points
+}
+
 function calcPotential(preds, res) {
   if (!preds) return 0
   let potential = 0
@@ -74,11 +102,11 @@ function calcPotential(preds, res) {
     if (!res?.groups?.[g]?.second && preds.groups?.[g]?.second) potential += PTS.g2
   }
   const thirdsLeft = 8 - (res?.thirds?.length || 0)
-  potential += thirdsLeft * PTS.t3
-  for (let i=0;i<16;i++) if (!res?.r32?.[i]  && preds.r32?.[i])  potential += PTS.r32
-  for (let i=0;i<8;i++)  if (!res?.r16?.[i]  && preds.r16?.[i])  potential += PTS.r16
-  for (let i=0;i<4;i++)  if (!res?.qf?.[i]   && preds.qf?.[i])   potential += PTS.qf
-  for (let i=0;i<2;i++)  if (!res?.sf?.[i]   && preds.sf?.[i])   potential += PTS.sf
+  potential += Math.min(Math.max(0, thirdsLeft), preds.thirds?.length || 0) * PTS.t3
+  potential += stagePotential(preds.r32, res?.r32, 16, PTS.r32)
+  potential += stagePotential(preds.r16, res?.r16, 8, PTS.r16)
+  potential += stagePotential(preds.qf, res?.qf, 4, PTS.qf)
+  potential += stagePotential(preds.sf, res?.sf, 2, PTS.sf)
   if (!res?.champion   && preds.champion)   potential += PTS.champion
   if (!res?.thirdPlace && preds.thirdPlace) potential += PTS.tp
   return potential

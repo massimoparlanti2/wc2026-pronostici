@@ -174,6 +174,30 @@ function findKOMatch(allMatches, teamA, teamB, stage) {
   }) || null
 }
 
+function compareMatchesByDate(a, b) {
+  const aTime = Date.parse(a.utcDate || '') || 0
+  const bTime = Date.parse(b.utcDate || '') || 0
+  return (aTime - bTime) ||
+    ((a.matchday || 0) - (b.matchday || 0)) ||
+    ((a.id || 0) - (b.id || 0))
+}
+
+function stageMatches(allMatches, stages) {
+  const wanted = new Set(stages)
+  return allMatches
+    .filter(match => wanted.has(match.stage))
+    .sort(compareMatchesByDate)
+}
+
+function stageWinners(allMatches, stages, expectedCount) {
+  const winners = stageMatches(allMatches, stages).map(getWinner)
+  return Array.from({ length: expectedCount }, (_, i) => winners[i] || null)
+}
+
+function firstStageMatch(allMatches, stages) {
+  return stageMatches(allMatches, stages)[0] || null
+}
+
 function compareTableRows(a, b) {
   return (b.points - a.points) ||
     (b.gd - a.gd) ||
@@ -301,31 +325,21 @@ async function main() {
     .map(row => row.team)
     .slice(0, 8)
 
-  // 4. Calcola risultati bracket
-  const resolve = (slot, thirds) =>
-    slot.g ? groups[slot.g]?.[slot.p] || null : thirds[slot.th] || null
+  // 4. Calcola risultati eliminazione diretta.
+  //
+  // Non ricostruiamo il tabellone partendo dai gironi: nel Mondiale a 48 squadre
+  // gli slot delle migliori terze dipendono da una tabella FIFA con 495 combinazioni.
+  // Per evitare punti mancanti o falsati, leggiamo i vincitori direttamente dalle
+  // partite reali per fase.
+  const r32 = stageWinners(koMatches, ['LAST_32', 'ROUND_OF_32'], 16)
+  const r16 = stageWinners(koMatches, ['LAST_16', 'ROUND_OF_16'], 8)
+  const qf  = stageWinners(koMatches, ['QUARTER_FINAL'], 4)
+  const sf  = stageWinners(koMatches, ['SEMI_FINAL'], 2)
 
-  const r32 = R32_T.map(([hs, as]) => {
-    const h = resolve(hs, allThirds), a = resolve(as, allThirds)
-    return getWinner(findKOMatch(koMatches, h, a, 'LAST_32'))
-  })
-
-  const r16 = R16F.map(([a,b]) =>
-    getWinner(findKOMatch(koMatches, r32[a], r32[b], 'LAST_16'))
-  )
-
-  const qf = QFF.map(([a,b]) =>
-    getWinner(findKOMatch(koMatches, r16[a], r16[b], 'QUARTER_FINAL'))
-  )
-
-  const sf = SFF.map(([a,b]) =>
-    getWinner(findKOMatch(koMatches, qf[a], qf[b], 'SEMI_FINAL'))
-  )
-
-  const finalMatch  = koMatches.find(m => m.stage === 'FINAL')
-  const thirdMatch  = koMatches.find(m => m.stage === 'THIRD_PLACE')
-  const champion    = getWinner(finalMatch)
-  const thirdPlace  = getWinner(thirdMatch)
+  const finalMatch = firstStageMatch(koMatches, ['FINAL'])
+  const thirdMatch = firstStageMatch(koMatches, ['THIRD_PLACE'])
+  const champion   = getWinner(finalMatch)
+  const thirdPlace = getWinner(thirdMatch)
 
   // 5. Componi oggetto risultati
   const results = {
