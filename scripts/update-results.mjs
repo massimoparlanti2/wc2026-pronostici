@@ -333,11 +333,11 @@ async function main() {
   // partite reali per fase.
   const r32 = stageWinners(koMatches, ['LAST_32', 'ROUND_OF_32'], 16)
   const r16 = stageWinners(koMatches, ['LAST_16', 'ROUND_OF_16'], 8)
-  const qf  = stageWinners(koMatches, ['QUARTER_FINAL'], 4)
-  const sf  = stageWinners(koMatches, ['SEMI_FINAL'], 2)
+  const qf  = stageWinners(koMatches, ['QUARTER_FINAL', 'QUARTER_FINALS'], 4)
+  const sf  = stageWinners(koMatches, ['SEMI_FINAL', 'SEMI_FINALS'], 2)
 
   const finalMatch = firstStageMatch(koMatches, ['FINAL'])
-  const thirdMatch = firstStageMatch(koMatches, ['THIRD_PLACE'])
+  const thirdMatch = firstStageMatch(koMatches, ['THIRD_PLACE', 'THIRD_PLACE_PLAY_OFF'])
   const champion   = getWinner(finalMatch)
   const thirdPlace = getWinner(thirdMatch)
 
