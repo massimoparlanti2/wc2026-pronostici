@@ -1,187 +1,453 @@
-# ⚽ Mondiali 2026 — Pronostici
+# ⚽ FIFA World Cup 2026 — Pronostici
 
-App per pronosticare i Mondiali 2026 con classifica live in tempo reale.
+A real-time prediction platform for the **2026 FIFA World Cup**, built to let a group of users predict the tournament and compete through a shared live leaderboard.
+
+Users can submit their predictions for the entire tournament, while an administrator can update the real results. Scores are then recalculated automatically and synchronized in real time across all connected devices.
+
+The project combines a **React frontend**, **Firebase Realtime Database**, **GitHub Actions** and an external football API to create a fully automated prediction platform.
 
 ---
 
-## 🚀 Setup in 4 passi
+## ✨ Features
 
-### Passo 1 — Crea il progetto Firebase (5 minuti)
+### 📝 Tournament Predictions
 
-1. Vai su **https://console.firebase.google.com**
-2. Clicca **"Aggiungi progetto"** → dai un nome (es. `mondiali2026`)
-3. Disabilita Google Analytics → **Crea progetto**
-4. Nel menu a sinistra clicca **"Realtime Database"** → **"Crea database"**
-5. Scegli una regione (es. `europe-west1`) → **Avanti**
-6. Seleziona **"Modalità test"** → **Attiva**
-   *(Questo permette a tutti di leggere/scrivere, perfetto per uso tra amici)*
+Participants can create their own prediction and forecast the outcome of the entire World Cup.
 
-### Passo 2 — Copia la configurazione Firebase
+Predictions cover:
 
-1. Nella console Firebase, clicca l'**icona ⚙️** in alto a sinistra → **Impostazioni progetto**
-2. Scorri fino a **"Le tue app"** → clicca **"</>"** (Web)
-3. Dai un nome all'app → **Registra app**
-4. Copia l'oggetto `firebaseConfig` che appare
+* Group-stage qualifiers
+* Round of 32
+* Round of 16
+* Quarter-finals
+* Semi-finals
+* Third-place match
+* World Cup winner
 
-### Passo 3 — Incolla la config nel progetto
+The application is designed around the new **48-team World Cup format**.
 
-Apri il file **`src/firebase.js`** e incolla i tuoi valori:
+---
 
-```js
-const firebaseConfig = {
-  apiKey:            "AIzaSy...",
-  authDomain:        "mondiali2026.firebaseapp.com",
-  databaseURL:       "https://mondiali2026-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:         "mondiali2026",
-  storageBucket:     "mondiali2026.appspot.com",
-  messagingSenderId: "123456789",
-  appId:             "1:123456789:web:abc123",
-}
+### 🏆 Live Leaderboard
+
+All participants compete in a shared ranking.
+
+The leaderboard updates automatically whenever new real results are entered.
+
+Each participant can see:
+
+* Current position
+* Total points
+* Progress throughout the tournament
+* Points earned for different prediction categories
+
+Because the leaderboard is synchronized through Firebase, changes are immediately visible to every connected user.
+
+---
+
+### 🎯 Scoring System
+
+Points are awarded according to the stage of the tournament:
+
+| Prediction              | Points |
+| ----------------------- | -----: |
+| 1st place in group × 12 |      3 |
+| 2nd place in group × 12 |      2 |
+| 3rd qualified team × 8  |      2 |
+| Round of 32 × 16        |      5 |
+| Round of 16 × 8         |      8 |
+| Quarter-finals × 4      |     11 |
+| Semi-finals × 2         |     14 |
+| Third-place match       |      6 |
+| World Cup winner        |     20 |
+
+The maximum theoretical score is **312 points**.
+
+The scoring system is implemented directly in the application logic so that scores can be recalculated consistently whenever results change.
+
+---
+
+## 👥 Participant Management
+
+New participants can join directly from the application.
+
+The workflow is intentionally simple:
+
+```text
+Join
+ ↓
+Enter name
+ ↓
+Submit predictions
+ ↓
+Predictions stored in Firebase
+ ↓
+Follow live ranking
 ```
 
-⚠️ **Importante:** il campo `databaseURL` è quello del Realtime Database, NON del Firestore.
-Lo trovi in Firebase Console → Realtime Database → copia l'URL in cima alla pagina.
-
-### Passo 4 — Deploy su GitHub Pages
-
-1. Crea un nuovo repository su GitHub (es. `wc2026-pronostici`)
-2. In **`vite.config.js`**, cambia `base` con il nome del tuo repo:
-   ```js
-   base: '/wc2026-pronostici/',  // ← il tuo nome repo
-   ```
-3. Carica tutti i file su GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "first commit"
-   git branch -M main
-   git remote add origin https://github.com/TUO_USERNAME/wc2026-pronostici.git
-   git push -u origin main
-   ```
-4. Su GitHub → **Settings** → **Pages** → Source: **GitHub Actions**
-5. Il deploy parte automaticamente! Dopo ~2 minuti il sito è online.
+The application is therefore suitable for private prediction competitions among friends, university groups or other communities.
 
 ---
 
-## 📱 Come usarlo
+## ⚙️ Admin Panel
 
-### Per i tuoi amici
-1. Condividi il link GitHub Pages (es. `https://tuousername.github.io/wc2026-pronostici/`)
-2. Ognuno clicca **"Aggiungi partecipante"**, inserisce il suo nome
-3. Fa le predizioni e clicca **"Salva"**
-4. Tutti vedono la **Classifica Live** in tempo reale
+An administrator has access to additional functionality for managing the competition.
 
-### Per te (admin)
-- Clicca **⚙️** nella home per accedere al pannello risultati
-- Inserisci i risultati reali man mano che avanzano i Mondiali
-- I punteggi di tutti si aggiornano istantaneamente su tutti i dispositivi
+The admin panel allows the administrator to:
 
----
+* Enter real match results
+* Update tournament results
+* Trigger score recalculation
+* Manage the competition state
 
-## 💰 Costi
-**Gratis.** Firebase Realtime Database ha un piano gratuito che include:
-- 1 GB di storage
-- 10 GB/mese di trasferimento dati
-- Per un gruppo di amici: praticamente illimitato
+Once a result is stored, the updated ranking becomes available to all participants.
 
 ---
 
-## 🛠 Sviluppo locale
+## 🤖 Automatic Result Updates
+
+One of the main features of the project is the optional automatic result-update pipeline.
+
+Instead of manually entering every result, **GitHub Actions** periodically executes:
+
+```text
+GitHub Actions
+      ↓
+football-data.org API
+      ↓
+Retrieve World Cup results
+      ↓
+Transform API response
+      ↓
+Update Firebase
+      ↓
+Leaderboard updates
+```
+
+The workflow runs approximately every **15 minutes** during the tournament.
+
+This allows the application to continue updating even when the administrator is not actively using it.
+
+The automated workflow uses:
+
+* `football-data.org`
+* GitHub Actions
+* Firebase Realtime Database
+* Repository secrets
+
+The project stops the scheduled checks after the tournament to avoid unnecessary API requests.
+
+---
+
+## 🏗️ Architecture
+
+The application follows a client + cloud backend architecture.
+
+```text
+                     ┌─────────────────────┐
+                     │     React / Vite     │
+                     │      Frontend       │
+                     └──────────┬──────────┘
+                                │
+                                ▼
+                     ┌─────────────────────┐
+                     │ Firebase Realtime   │
+                     │      Database       │
+                     └──────────┬──────────┘
+                                │
+                ┌───────────────┴───────────────┐
+                │                               │
+                ▼                               ▼
+        Participants                    Admin / Results
+                                                │
+                                                ▼
+                                      ┌─────────────────┐
+                                      │ GitHub Actions  │
+                                      └────────┬────────┘
+                                               │
+                                               ▼
+                                      football-data.org
+```
+
+This architecture separates:
+
+* **User interface** → React
+* **Persistent application state** → Firebase
+* **Automated jobs** → GitHub Actions
+* **External football data** → football-data.org
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+* **React**
+* **JavaScript / JSX**
+* **Vite**
+* **CSS**
+
+### Backend / Data
+
+* **Firebase Realtime Database**
+
+Firebase provides persistent storage and real-time synchronization between users.
+
+### Automation
+
+* **GitHub Actions**
+* **Node.js**
+
+GitHub Actions is used to periodically retrieve official match data and update the database automatically.
+
+### External API
+
+* **football-data.org**
+
+The API provides tournament results used by the automated result-update workflow.
+
+---
+
+## 📁 Project Structure
+
+```text
+wc2026-pronostici/
+│
+├── .github/
+│   └── workflows/
+│       ├── deploy.yml
+│       └── update-results.yml
+│
+├── src/
+│   ├── App.jsx
+│   ├── firebase.js
+│   └── main.jsx
+│
+├── scripts/
+│   └── update-results.mjs
+│
+├── dist/
+│
+├── index.html
+├── package.json
+├── package-lock.json
+├── vite.config.js
+└── README.md
+```
+
+### `src/App.jsx`
+
+Contains the main application logic and user interface.
+
+### `src/firebase.js`
+
+Initializes the Firebase connection used by the application.
+
+### `scripts/update-results.mjs`
+
+Retrieves updated tournament data from the external football API, transforms it into the format required by the application and writes the results to Firebase.
+
+### `.github/workflows/`
+
+Contains the GitHub Actions workflows responsible for:
+
+* Building and deploying the application
+* Updating tournament results automatically
+
+---
+
+## 🚀 Getting Started
+
+### Requirements
+
+* Node.js
+* npm
+* Firebase project
+* Firebase Realtime Database
+
+---
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/massimoparlanti2/wc2026-pronostici.git
+cd wc2026-pronostici
+```
+
+### 2. Install dependencies
 
 ```bash
 npm install
+```
+
+### 3. Configure Firebase
+
+Create a Firebase project and enable **Realtime Database**.
+
+Then configure the Firebase credentials used by the application.
+
+The configuration should be kept outside the repository whenever possible.
+
+---
+
+### 4. Start the development server
+
+```bash
 npm run dev
 ```
 
-Apri http://localhost:5173
+The application will be available at:
 
----
-
-## 📁 Struttura del progetto
-
-```
-wc2026-pronostici/
-├── src/
-│   ├── App.jsx          # Tutta la logica dell'app
-│   ├── firebase.js      # ⚠️ Incolla qui la tua config Firebase
-│   └── main.jsx         # Entry point React
-├── .github/
-│   └── workflows/
-│       └── deploy.yml   # Deploy automatico su GitHub Pages
-├── index.html
-├── vite.config.js       # ⚠️ Cambia 'base' con il nome del tuo repo
-└── package.json
+```text
+http://localhost:5173
 ```
 
 ---
 
-## 🎯 Sistema Punti
+### 5. Build for production
 
-| Fase | Punti |
-|------|-------|
-| 1° classificato girone (×12) | 3 pt |
-| 2° classificato girone (×12) | 2 pt |
-| Terza qualificata (×8) | 2 pt |
-| Sedicesimi (×16) | 5 pt |
-| Ottavi (×8) | 8 pt |
-| Quarti (×4) | 11 pt |
-| Semifinale (×2) | 14 pt |
-| Campione del Mondo | 20 pt |
-| Finalina 3°/4° | 6 pt |
-| **Massimo teorico** | **312 pt** |
+```bash
+npm run build
+```
 
 ---
 
-## 🤖 Risultati automatici (opzionale ma consigliato)
+## 🌐 Deployment
 
-Con questa funzione i risultati si aggiornano **circa ogni 15 minuti** senza che nessuno debba inserirli a mano, usando l'API gratuita di **football-data.org**.
+The application is designed to be deployed using **GitHub Pages**.
 
-Il workflow parte dall'inizio del Mondiale e si ferma dopo il controllo del **20 luglio 2026**, così cattura anche il risultato della finale del 19 luglio sera.
+The repository includes a GitHub Actions workflow that automatically builds and deploys the application.
 
-### Passo 1 — Ottieni la chiave API football-data.org
+The deployment process is:
 
-1. Vai su **https://www.football-data.org/client/register**
-2. Registrati (è gratis, piano free = 10 richieste/min, più che sufficiente)
-3. Ricevi la chiave API per email (es. `abc123def456...`)
-
-### Passo 2 — Crea il Service Account Firebase
-
-Il service account permette allo script GitHub di scrivere su Firebase.
-
-1. Vai su **Firebase Console → Impostazioni progetto → Account di servizio**
-2. Clicca **"Genera nuova chiave privata"** → Scarica il file JSON
-3. Apri il file JSON e **copia tutto il contenuto**
-
-### Passo 3 — Aggiungi i Secrets su GitHub
-
-Vai su **GitHub → tuo repo → Settings → Secrets and variables → Actions → New repository secret**
-
-Aggiungi questi 3 secret:
-
-| Nome secret | Valore |
-|-------------|--------|
-| `FOOTBALL_API_KEY` | La chiave API di football-data.org |
-| `FIREBASE_DATABASE_URL` | L'URL del tuo Realtime Database (es. `https://xxx-default-rtdb.europe-west1.firebasedatabase.app`) |
-| `FIREBASE_SERVICE_ACCOUNT` | **Tutto** il contenuto JSON del file service account (incolla il JSON intero) |
-
-### Come funziona
-
-```
-Ogni 15 minuti → GitHub Actions esegue scripts/update-results.mjs
-               → Chiama football-data.org/v4/competitions/WC
-               → Scarica classifiche gironi + risultati partite
-               → Mappa i dati nel formato dell'app
-               → Scrive su Firebase /wc2026/results
-               → Tutti gli utenti vedono i punteggi aggiornati in tempo reale
+```text
+Push to GitHub
+      ↓
+GitHub Actions
+      ↓
+npm build
+      ↓
+Deploy
+      ↓
+GitHub Pages
 ```
 
-### Esecuzione manuale
+This eliminates the need to manually build and upload the application after every change.
 
-Puoi forzare un aggiornamento immediato su:
-**GitHub → Actions → "⚽ Aggiorna Risultati Mondiali" → "Run workflow"**
+---
 
-Se vuoi eseguirlo fuori dalla finestra del Mondiale, attiva l'opzione **force** nel workflow manuale.
+## 🔐 Secrets & Security
 
-### Compatibilità con il pannello ⚙️
+The automated result-update workflow requires credentials that should **never be committed to the repository**.
 
-Se hai già inserito risultati manualmente nel pannello ⚙️, l'aggiornamento automatico **li sovrascriverà**. Una volta attivato il sistema automatico, il pannello manuale non serve più.
+The following values are configured as GitHub Actions secrets:
+
+```text
+FOOTBALL_API_KEY
+FIREBASE_DATABASE_URL
+FIREBASE_SERVICE_ACCOUNT
+```
+
+The service account credentials provide the workflow with permission to update the Firebase database.
+
+Keeping these values in GitHub Secrets prevents sensitive credentials from being exposed in the source code.
+
+> Firebase Web API keys are not equivalent to private server credentials, but Firebase Database Rules must still be configured appropriately. The service account JSON must always remain secret.
+
+---
+
+## 🔄 Data Flow
+
+The automatic result pipeline follows this process:
+
+```text
+1. GitHub Actions starts
+          ↓
+2. Call football-data.org API
+          ↓
+3. Retrieve latest World Cup results
+          ↓
+4. Parse tournament data
+          ↓
+5. Convert API data to application format
+          ↓
+6. Write results to Firebase
+          ↓
+7. React clients receive updated data
+          ↓
+8. Scores and leaderboard are refreshed
+```
+
+This allows the frontend to remain relatively simple while the scheduled workflow handles external data synchronization.
+
+---
+
+## 📊 Why This Project?
+
+The project was built to solve a practical problem:
+
+> **Create a prediction competition that requires almost no manual administration once the tournament begins.**
+
+Instead of maintaining predictions in spreadsheets or manually calculating scores, the application centralizes:
+
+* Predictions
+* Tournament results
+* Scoring
+* Rankings
+* Data synchronization
+
+The project therefore combines a real-world use case with several software engineering concepts:
+
+* Frontend development
+* Cloud data storage
+* Real-time synchronization
+* API integration
+* Scheduled automation
+* CI/CD
+* Data transformation
+
+---
+
+## 🔮 Future Improvements
+
+Possible future developments include:
+
+* 📱 Improved mobile-first UI
+* 🔔 Push notifications after matches
+* 📈 Participant performance charts
+* 📊 Prediction accuracy statistics
+* 🧮 More advanced scoring systems
+* 🕒 Automatic prediction deadlines
+* 🔐 Firebase Authentication
+* 👤 User accounts
+* 🏅 Multiple prediction competitions
+* 📅 Historical tournament support
+* ⚡ Serverless backend functions
+* 🤖 AI-assisted match predictions
+* 📊 Probability-based predictions instead of only categorical picks
+
+---
+
+## ⚠️ Disclaimer
+
+This project is a recreational prediction game created for entertainment and experimentation.
+
+Predictions are not guaranteed to be accurate and should not be interpreted as betting advice or as statistically validated forecasts.
+
+---
+
+## 👨‍💻 Author
+
+**Massimo Parlanti**
+
+MSc Artificial Intelligence student at the University of Pisa.
+
+GitHub: [@massimoparlanti2](https://github.com/massimoparlanti2)
+
+---
+
+## 📄 License
+
+This project is currently intended primarily for personal use and experimentation.
+
+No specific open-source license has currently been defined.
